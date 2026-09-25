@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Plus, Trash2, CheckCircle2, Circle, Volume2, VolumeX } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Pause, RotateCcw, Plus, Trash2, CheckCircle2, Circle, Music } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function App() {
@@ -20,9 +20,6 @@ export default function App() {
     return localStorage.getItem('flowstate_notes') || '';
   });
 
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const audioContextRef = useRef(null);
-
   useEffect(() => {
     localStorage.setItem('flowstate_tasks', JSON.stringify(tasks));
   }, [tasks]);
@@ -31,6 +28,7 @@ export default function App() {
     localStorage.setItem('flowstate_notes', notes);
   }, [notes]);
 
+  // Timer logic
   useEffect(() => {
     let interval = null;
     if (isActive && secondsLeft > 0) {
@@ -51,43 +49,12 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isActive, secondsLeft, mode]);
 
+  // Tab Title updates with timer
   useEffect(() => {
     const mins = Math.floor(secondsLeft / 60);
     const secs = secondsLeft % 60;
     document.title = `(${mins}:${secs < 10 ? '0' : ''}${secs}) FlowState`;
   }, [secondsLeft]);
-
-  const toggleAudio = () => {
-    if (isPlayingAudio) {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      setIsPlayingAudio(false);
-    } else {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx();
-      const bufferSize = ctx.sampleRate * 2;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      let lastOut = 0.0;
-
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        data[i] = (lastOut + 0.02 * white) / 1.02;
-        lastOut = data[i];
-        data[i] *= 3.5;
-      }
-
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-      noise.loop = true;
-      noise.connect(ctx.destination);
-      noise.start(0);
-
-      audioContextRef.current = ctx;
-      setIsPlayingAudio(true);
-    }
-  };
 
   const addTask = (e) => {
     e.preventDefault();
@@ -116,25 +83,22 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center p-6 selection:bg-indigo-500 selection:text-white">
+      {/* Header */}
       <header className="w-full max-w-4xl flex justify-between items-center py-4 border-b border-slate-800">
         <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent">
           FlowState
         </h1>
-        <button
-          onClick={toggleAudio}
-          className={`flex items-center gap-2 text-sm px-3.5 py-1.5 rounded-full border transition ${
-            isPlayingAudio 
-              ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300' 
-              : 'border-slate-700 hover:border-slate-500 text-slate-400'
-          }`}
-        >
-          {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          <span>{isPlayingAudio ? 'Brown Noise Active' : 'Sound Off'}</span>
-        </button>
+        <div className="flex items-center gap-2 text-xs text-slate-400 border border-slate-800 px-3 py-1.5 rounded-full">
+          <Music size={14} className="text-emerald-400" />
+          <span>Spotify Focus Player</span>
+        </div>
       </header>
 
-      <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+      {/* Main Grid */}
+      <main className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+        {/* Left Column: Timer & Priorities */}
         <section className="flex flex-col gap-6">
+          {/* Timer Card */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 flex flex-col items-center text-center shadow-lg backdrop-blur-sm">
             <span className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-2">
               {mode === 'focus' ? 'Deep Work Session' : 'Quick Recharge'}
@@ -163,6 +127,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* Daily 3 Priorities */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold tracking-wide text-slate-300">Rule of 3 Priorities</h2>
@@ -218,19 +183,37 @@ export default function App() {
           </div>
         </section>
 
-        <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col shadow-lg backdrop-blur-sm h-full">
-          <div className="mb-2">
-            <h2 className="text-sm font-semibold tracking-wide text-slate-300">Distraction Dump</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Offload thoughts here during work sprints. Automatically saves to your browser.
-            </p>
+        {/* Right Column: Distraction Dump + Spotify Embed */}
+        <section className="flex flex-col gap-6">
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col shadow-lg backdrop-blur-sm">
+            <div className="mb-2">
+              <h2 className="text-sm font-semibold tracking-wide text-slate-300">Distraction Dump</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Offload thoughts here during work sprints. Automatically saves to browser.
+              </p>
+            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Check assignment submission, reply to email later..."
+              className="w-full h-36 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 resize-none font-mono transition leading-relaxed"
+            />
           </div>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Check assignment submission, reply to email later..."
-            className="flex-1 min-h-[220px] bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 resize-none font-mono transition leading-relaxed"
-          />
+
+          {/* Spotify Deep Focus Player */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
+            <iframe
+              style={{ borderRadius: '12px' }}
+              src="https://open.spotify.com/embed/playlist/37i9dQZF1DX8Uebhn9wzrS?utm_source=generator&theme=0"
+              width="100%"
+              height="152"
+              frameBorder="0"
+              allowFullScreen=""
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title="Spotify Focus"
+            />
+          </div>
         </section>
       </main>
     </div>
